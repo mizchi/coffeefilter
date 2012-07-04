@@ -104,11 +104,25 @@ skeleton = (data = {}) ->
 	# basis with the `h` function.
 	data.autoescape ?= off
 
+	class TemplateError extends Error
+		constructor: (@message) ->
+			Error.call this, @message
+			Error.captureStackTrace this, arguments.callee
+			name: 'TemplateError'
+
 	# Internal CoffeeKup stuff.
 	__ck =
-		buffer: []
+		root_node:
+			id: '__root_node'
+			buffer: []
+			children_pos: {}
+			parent: null
 
-		blocks: {}
+		current_node: null
+
+		nodes: null
+
+		base: null
 
 		esc: (txt) ->
 			if data.autoescape then h(txt) else String(txt)
@@ -126,7 +140,38 @@ skeleton = (data = {}) ->
 			tag.apply data, combo
 
 		render: ->
-			@buffer.join ''
+			if @base?
+				@render_with_base()
+			else
+				@render_without_base()
+
+		render_with_base: ->
+			for key of @nodes
+				node = @nodes[key]
+				if node.parent?
+					# this skips this templates root node
+					same_node = @base.nodes[node.id]
+					node.parent = if same_node? then same_node.parent else null
+			@base.render_nodes()
+			console.log "owieyroiwuyert"
+			@render_nodes()
+			console.log "wohoo"
+			@base.root_node.buffer.join ''
+
+		render_without_base: ->
+			@render_nodes()
+			@root_node.buffer.join ''
+
+		render_nodes: ->
+			for key of @nodes
+				node = @nodes[key]
+				# the root node doesn't have a parent
+				# and nodes in templates with a base that don't
+				# have a corresponding node in the base template
+				# don't have parents either
+				if node.parent?
+					content = node.buffer.join ''
+					node.parent.buffer[node.parent.children_pos[node.id]] = content
 
 		write_idclass: (str) ->
 			classes = []
@@ -198,6 +243,10 @@ skeleton = (data = {}) ->
 
 			null
 
+	__ck.current_node = __ck.root_node
+	__ck.nodes =
+		'__root_node': __ck.root_node
+
 	tag = (name, args...) ->
 		for a in args
 			switch typeof a
@@ -218,13 +267,13 @@ skeleton = (data = {}) ->
 
 		__ck.write_tag(name, idclass, attrs, contents)
 
-	yield_ = (f) ->
-		temp_buffer = []
-		old_buffer = __ck.buffer
-		__ck.buffer = temp_buffer
-		f()
-		__ck.buffer = old_buffer
-		temp_buffer.join ''
+		#yield_ = (f) ->
+		#temp_buffer = []
+		#old_buffer = __ck.buffer
+		#__ck.buffer = temp_buffer
+		#f()
+		#__ck.buffer = old_buffer
+		#temp_buffer.join ''
 
 	h = (txt) ->
 		String(txt).replace(/&/g, '&amp;')
@@ -237,7 +286,7 @@ skeleton = (data = {}) ->
 		text '\n' if data.format
 
 	text = (txt) ->
-		__ck.buffer.push String(txt)
+		__ck.current_node.buffer.push String(txt)
 		null
 
 	comment = (cmt) ->
@@ -270,10 +319,25 @@ skeleton = (data = {}) ->
 		text '\n' if data.format
 
 	base = (base) ->
-		null
+		if __ck.root_node.buffer.length != 0
+			throw new TemplateError "Calls to base need to be first in your template"
+		if __ck.base?
+			throw new TemplateError "You can only inherit from one template"
+		base_template = data.__ck.compile data.settings.views + "/" + base + ".coffee", data
+		__ck.base = base_template data
 
 	block = (id, contents) ->
-		null
+		node =
+			id: id
+			buffer: []
+			children_pos: {}
+			parent: __ck.current_node
+		node.parent.children_pos[id] = node.parent.buffer.length
+		text "[Block: #{id}"
+		__ck.nodes[id] = node
+		__ck.current_node = node
+		__ck.write_contents contents
+		__ck.current_node = node.parent
 
 	null
 
@@ -286,42 +350,61 @@ skeleton = String(skeleton)
 skeleton = coffeescript_helpers + skeleton
 
 # Compiles a template into a standalone JavaScript function.
-coffeekup.compile = (template, options = {}) ->
-	# The template can be provided as either a function or a CoffeeScript string
-	# (in the latter case, the CoffeeScript compiler must be available).
-	if typeof template is 'function' then template = String(template)
-	else if typeof template is 'string' and coffee?
-		template = coffee.compile template, bare: yes
-		template = "function(){#{template}}"
+coffeekup.compile = (filename, data = {}) ->
+	data.cache ?= off
 
-	# Add a function for each tag this template references. We don't want to have
-	# all hundred-odd tags wasting space in the compiled function.
-	tag_functions = ''
-	tags_used = []
+	console.log data
 
-	for t in coffeekup.tags
-		if template.indexOf(t) > -1
-			tags_used.push t
+	data.__ck =
+		compile: coffeekup.compile
 
-	tag_functions += "var #{tags_used.join ','};"
-	for t in tags_used
-		tag_functions += "#{t} = function(){return __ck.tag('#{t}', arguments);};"
+	if data.cache and cache[filename]?
+		return cache[filename]
+	else
+		template = fs.readFileSync filename, 'utf8'
 
-	# Main function assembly.
-	code = tag_functions + skeleton
+	try
+		# The template can be provided as either a function or a CoffeeScript string
+		# (in the latter case, the CoffeeScript compiler must be available).
+		if typeof template is 'function' then template = String(template)
+		else if typeof template is 'string' and coffee?
+			template = coffee.compile template, bare: yes
+			template = "function(){#{template}}"
 
-	code += "__ck.doctypes = #{JSON.stringify coffeekup.doctypes};"
-	code += "__ck.coffeescript_helpers = #{JSON.stringify coffeescript_helpers};"
-	code += "__ck.self_closing = #{JSON.stringify coffeekup.self_closing};"
+		# Add a function for each tag this template references. We don't want to have
+		# all hundred-odd tags wasting space in the compiled function.
+		tag_functions = ''
+		tags_used = []
 
-	# If `locals` is set, wrap the template inside a `with` block. This is the
-	# most flexible but slower approach to specifying local variables.
-	code += 'with(data.locals){' if options.locals
-	code += "(#{template}).call(data);"
-	code += '}' if options.locals
-	code += "return __ck;"
+		for t in coffeekup.tags
+			if template.indexOf(t) > -1
+				tags_used.push t
 
-	new Function('data', code)
+		tag_functions += "var #{tags_used.join ','};"
+		for t in tags_used
+			tag_functions += "#{t} = function(){return __ck.tag('#{t}', arguments);};"
+
+		# Main function assembly.
+		code = tag_functions + skeleton
+
+		code += "__ck.doctypes = #{JSON.stringify coffeekup.doctypes};"
+		code += "__ck.coffeescript_helpers = #{JSON.stringify coffeescript_helpers};"
+		code += "__ck.self_closing = #{JSON.stringify coffeekup.self_closing};"
+
+		# If `locals` is set, wrap the template inside a `with` block. This is the
+		# most flexible but slower approach to specifying local variables.
+		code += 'with(data.locals){' if data.locals
+		code += "(#{template}).call(data);"
+		code += '}' if data.locals
+		code += "return __ck;"
+
+		compiled_template = new Function('data', code)
+	catch e
+		throw new TemplateError "Error compiling #{filename}: #{e.message}"
+
+	if data.cache
+		cache[filename] = compiled_template
+	compiled_template
 
 cache = {}
 
@@ -340,22 +423,13 @@ class TemplateError extends Error
 # data, but the two will be merged and passed down to the compiler (which uses
 # `locals` and `hardcode`), and the template (which understands `locals`, `format`
 # and `autoescape`).
-coffeekup.render = (template, data = {}, options = {}) ->
-
-	data[k] = v for k, v of options
-	data.cache ?= off
-
-	if data.cache and cache[template]?
-		tpl = cache[template]
-	else
-		try tpl = coffeekup.compile template, data
-		catch e then throw new TemplateError "Error compiling #{data.filename}: #{e.message}"
-		if data.cache
-			cache[template] = tpl
+coffeekup.render = (filename, data = {}) ->
+	data.filename = filename
+	tpl = coffeekup.compile filename, data
 
 	try
 		(tpl data).render()
-	catch e then throw new TemplateError "Error rendering #{data.filename}: #{e.message}"
+	catch e then throw new TemplateError "Error rendering #{filename}: #{e.message}"
 
 
 unless window?
@@ -364,8 +438,6 @@ unless window?
 		simple: coffeekup.render
 		meryl: coffeekup.render
 		express: (filename, data, callback) ->
-			fs.readFile filename, 'utf8', (err, template) ->
-				if err
-					return callback err, template
-				str = coffeekup.render template, data
-				callback null, str
+			data.filename = filename
+			str = coffeekup.render filename, data
+			callback null, str
