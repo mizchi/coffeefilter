@@ -1,4 +1,10 @@
 # CoffeeKup <☕/>
+
+This is my branch of the original
+[Coffeekup](https://github.com/mauricemach/coffeekup). I have great plans, but
+so far the only thing I've done is make it compatible with express 3.0.0.beta5.
+Not safe for production use...
+
 ## Markup as CoffeeScript
 
 CoffeeKup is a templating engine for [node.js](http://nodejs.org) and browsers that lets you to write your HTML templates in 100% pure [CoffeeScript](http://coffeescript.org).
