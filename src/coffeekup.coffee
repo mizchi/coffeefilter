@@ -15,6 +15,7 @@ if window?
 else
   coffeekup = exports
   coffee = require 'coffee-script'
+	fs = require 'fs'
 
 coffeekup.version = '0.3.1edge'
 
@@ -335,37 +336,46 @@ cache = {}
 # `locals` and `hardcode`), and the template (which understands `locals`, `format`
 # and `autoescape`).
 coffeekup.render = (template, data = {}, options = {}) ->
-  data[k] = v for k, v of options
-  data.cache ?= off
+	data[k] = v for k, v of options
+	data.cache ?= off
 
-  if data.cache and cache[template]? then tpl = cache[template]
-  else if data.cache then tpl = cache[template] = coffeekup.compile(template, data)
-  else tpl = coffeekup.compile(template, data)
-  tpl(data)
+	console.log "coffeekup rendering template: #{template}, data: #{data}"
+	console.log data
+
+	if data.cache and cache[template]? then tpl = cache[template]
+	else if data.cache then tpl = cache[template] = coffeekup.compile(template, data)
+	else tpl = coffeekup.compile(template, data)
+	tpl(data)
 
 unless window?
-  coffeekup.adapters =
-    # Legacy adapters for when CoffeeKup expected data in the `context` attribute.
-    simple: coffeekup.render
-    meryl: coffeekup.render
-    
-    express:
-      TemplateError: class extends Error
-        constructor: (@message) ->
-          Error.call this, @message
-          Error.captureStackTrace this, arguments.callee
-        name: 'TemplateError'
-        
-      compile: (template, data) -> 
-        # Allows `partial 'foo'` instead of `text @partial 'foo'`.
-        data.hardcode ?= {}
-        data.hardcode.partial = ->
-          text @partial.apply @, arguments
-        
-        TemplateError = @TemplateError
-        try tpl = coffeekup.compile(template, data)
-        catch e then throw new TemplateError "Error compiling #{data.filename}: #{e.message}"
-        
-        return ->
-          try tpl arguments...
-          catch e then throw new TemplateError "Error rendering #{data.filename}: #{e.message}"
+	coffeekup.adapters =
+		# Legacy adapters for when CoffeeKup expected data in the `context` attribute.
+		simple: coffeekup.render
+		meryl: coffeekup.render
+		express:
+			TemplateError: class extends Error
+				constructor: (@message) ->
+					Error.call this, @message
+					Error.captureStackTrace this, arguments.callee
+					name: 'TemplateError'
+
+			compile: (template, data) ->
+				# Allows `partial 'foo'` instead of `text @partial 'foo'`.
+				data.hardcode ?= {}
+				data.hardcode.partial = ->
+					text @partial.apply @, arguments
+
+				TemplateError = @TemplateError
+				try tpl = coffeekup.compile(template, data)
+				catch e then throw new TemplateError "Error compiling #{data.filename}: #{e.message}"
+
+				return ->
+					try tpl arguments...
+					catch e then throw new TemplateError "Error rendering #{data.filename}: #{e.message}"
+			express3: (filename, data, callback) ->
+				fs.readFile filename, 'utf8', (err, template) ->
+					if err
+						return callback err, template
+					str = coffeekup.render template, data
+					console.log str
+					callback null, str
