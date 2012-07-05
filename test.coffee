@@ -62,34 +62,6 @@ tests =
     expected: '<h1>bar</h1>'
     params: {foo: 'bar'}
 
-  'Local vars, hardcoded':
-    template: 'h1 "harcoded: " + obj.foo'
-    run: ->
-      obj = {foo: 'bar'}
-      @compiled = ck.compile(@template, hardcode: {obj})
-      @expected = '<h1>harcoded: bar</h1>'
-      @result = @compiled()
-      @success = @result is @expected
-      if @success
-        obj.foo = 'baz'
-        @result = @compiled()
-        @success = @result is @expected
-
-  'Local vars, hard-coded (functions)':
-    template: "h1 \"The sum is: \#{sum 1, 2}\""
-    expected: '<h1>The sum is: 3</h1>'
-    params: {hardcode: {sum: (a, b) -> a + b}}
-
-  'Local vars, hard-coded ("helpers")':
-    template: "textbox id: 'foo'"
-    expected: '<input id="foo" name="foo" type="text" />'
-    params:
-      hardcode:
-        textbox: (attrs) ->
-          attrs.name = attrs.id
-          attrs.type = 'text'
-          tag 'input', attrs
-
   'Local vars':
     template: 'h1 "dynamic: " + obj.foo'
     run: ->
@@ -135,11 +107,11 @@ tests =
   'ID/class shortcut (no string contents)':
     template: "img '#myid.myclass', src: '/pic.png'"
     expected: '<img id="myid" class="myclass" src="/pic.png" />'
-      
+
   'Attribute values':
     template: "br vrai: yes, faux: no, undef: @foo, nil: null, str: 'str', num: 42, arr: [1, 2, 3], obj: {foo: 'bar'}, func: ->"
     expected: '<br vrai="vrai" str="str" num="42" arr="1,2,3" obj-foo="bar" func="(function () {}).call(this);" />'
-    
+
   'IE conditionals':
     template: """
       html ->
@@ -157,12 +129,12 @@ tests =
           <![endif]-->
         </head>
       </html>
-      
+
     '''
     params: {format: yes}
-    
-  'yield':
-    template: "p \"This text could use \#{yield -> strong -> a href: '/', 'a link'}.\""
+
+  'cede':
+    template: "p \"This text could use \#{cede -> strong -> a href: '/', 'a link'}.\""
     expected: '<p>This text could use <strong><a href="/">a link</a></strong>.</p>'
 
 ck = require './src/coffeekup'
@@ -185,7 +157,7 @@ render = ck.render
       else
         test.result = ck.render(test.template, test.params)
         test.success = test.result is test.expected
-        
+
       if test.success
         passed.push name
         print "[Passed] #{name}\n"
@@ -198,7 +170,7 @@ render = ck.render
       printc 'redder', "[Error]  #{name}\n"
 
   print "\n#{total} tests, #{passed.length} passed, #{failed.length} failed, #{errors.length} errors\n\n"
-  
+
   if failed.length > 0
     printc 'red', "FAILED:\n\n"
 

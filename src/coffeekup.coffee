@@ -51,7 +51,7 @@ coffeescript_helpers = """
 		for (var i = 0, l = this.length; i < l; i++) {
 			if (this[i] === item) return i;
 		} return -1; };
-""".replace /\n/g, ''
+""".replace(/\n/g, '').replace(/\t/g, '  ')
 
 # Private HTML element reference.
 # Please mind the gap (1 space at the beginning of each subsequent line).
@@ -112,6 +112,8 @@ skeleton = (data = {}) ->
 
 	# Internal CoffeeKup stuff.
 	__ck =
+		is_ceding: false
+
 		root_node:
 			id: '__root_node'
 			buffer: []
@@ -152,10 +154,8 @@ skeleton = (data = {}) ->
 					# this skips this templates root node
 					same_node = @base.nodes[node.id]
 					node.parent = if same_node? then same_node.parent else null
-			@base.render_nodes()
-			console.log "owieyroiwuyert"
+			@base.render()
 			@render_nodes()
-			console.log "wohoo"
 			@base.root_node.buffer.join ''
 
 		render_without_base: ->
@@ -267,14 +267,6 @@ skeleton = (data = {}) ->
 
 		__ck.write_tag(name, idclass, attrs, contents)
 
-		#yield_ = (f) ->
-		#temp_buffer = []
-		#old_buffer = __ck.buffer
-		#__ck.buffer = temp_buffer
-		#f()
-		#__ck.buffer = old_buffer
-		#temp_buffer.join ''
-
 	h = (txt) ->
 		String(txt).replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
@@ -284,6 +276,16 @@ skeleton = (data = {}) ->
 	doctype = (type = 'default') ->
 		text __ck.doctypes[type]
 		text '\n' if data.format
+
+	cede = (f) ->
+		temp_buffer = []
+		__ck.is_ceding = true
+		old_buffer = __ck.current_node.buffer
+		__ck.current_node.buffer = temp_buffer
+		f()
+		__ck.current_node.buffer = old_buffer
+		__ck.is_ceding = false
+		temp_buffer.join ''
 
 	text = (txt) ->
 		__ck.current_node.buffer.push String(txt)
@@ -350,26 +352,34 @@ skeleton = String(skeleton)
 skeleton = coffeescript_helpers + skeleton
 
 # Compiles a template into a standalone JavaScript function.
-coffeekup.compile = (filename, data = {}) ->
-	data.cache ?= off
-
-	console.log data
+coffeekup.compile = (template, data = {}) ->
+	use_cache = data.cache ?= off
 
 	data.__ck =
 		compile: coffeekup.compile
 
-	if data.cache and cache[filename]?
-		return cache[filename]
-	else
-		template = fs.readFileSync filename, 'utf8'
-
 	try
-		# The template can be provided as either a function or a CoffeeScript string
-		# (in the latter case, the CoffeeScript compiler must be available).
-		if typeof template is 'function' then template = String(template)
+		endswith = (str, end) ->
+			str.length >= end.length and str.substr(-end.length) == end
+
+		# The template can be provided as either a function, a filename, or a
+		# CoffeeScript string (in the latter case, the CoffeeScript compiler must
+		# be available).
+		if typeof template is 'function'
+			filename = "[Some function]"
+			use_cache = false
+			template = String(template)
+		else if typeof template is 'string' and endswith template, '.coffee'
+			filename = template
+			if use_cache and cache[filename]?
+				return cache[filename]
+			else
+				template = fs.readFileSync filename, 'utf8'
 		else if typeof template is 'string' and coffee?
-			template = coffee.compile template, bare: yes
-			template = "function(){#{template}}"
+			filename = "[Inline template]"
+			use_cache = false
+		template = coffee.compile template, bare: yes
+		template = "function(){#{template}}"
 
 		# Add a function for each tag this template references. We don't want to have
 		# all hundred-odd tags wasting space in the compiled function.
@@ -399,11 +409,12 @@ coffeekup.compile = (filename, data = {}) ->
 		code += "return __ck;"
 
 		compiled_template = new Function('data', code)
+
+		if use_cache
+			cache[filename] = compiled_template
 	catch e
 		throw new TemplateError "Error compiling #{filename}: #{e.message}"
 
-	if data.cache
-		cache[filename] = compiled_template
 	compiled_template
 
 cache = {}
