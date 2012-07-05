@@ -170,7 +170,7 @@ render = ck.render
 
 @run = ->
   {print} = require 'sys'
-  colors = {red: "\033[31m", redder: "\033[91m", green: "\033[32m", normal: "\033[0m"}
+  colors = {red: "\u001b[31m", redder: "\u001b[91m", green: "\u001b[32m", normal: "\u001b[0m"}
   printc = (color, str) -> print colors[color] + str + colors.normal
 
   [total, passed, failed, errors] = [0, [], [], []]
