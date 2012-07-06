@@ -26,63 +26,63 @@ Fletcher and why the lucky stiff) to CoffeeScript.
 
 Here's what a template written for CoffeeFilter looks like:
 
-~~~~~ coffeescript
-    doctype 5
-    html ->
-      head ->
-        meta charset: 'utf-8'
-        title "#{@title or 'Untitled'} | A completely plausible website"
-        meta(name: 'description', content: @description) if @description?
+~~~ coffeescript
+doctype 5
+html ->
+	head ->
+		meta charset: 'utf-8'
+		title "#{@title or 'Untitled'} | A completely plausible website"
+		meta(name: 'description', content: @description) if @description?
 
-        link rel: 'stylesheet', href: '/css/app.css'
+		link rel: 'stylesheet', href: '/css/app.css'
 
-        style '''
-          body {font-family: sans-serif}
-          header, nav, section, footer {display: block}
-        '''
+		style '''
+			body {font-family: sans-serif}
+			header, nav, section, footer {display: block}
+		'''
 
-        script src: '/js/jquery.js'
+		script src: '/js/jquery.js'
 
-        coffeescript ->
-          $(document).ready ->
-            alert 'Alerts suck!'
-      body ->
-        header ->
-          h1 @title or 'Untitled'
+		coffeescript ->
+			$(document).ready ->
+				alert 'Alerts suck!'
+	body ->
+		header ->
+			h1 @title or 'Untitled'
 
-          nav ->
-            ul ->
-              (li -> a href: '/', -> 'Home') unless @path is '/'
-              li -> a href: '/chunky', -> 'Bacon!'
-              switch @user.role
-                when 'owner', 'admin'
-                  li -> a href: '/admin', -> 'Secret Stuff'
-                when 'vip'
-                  li -> a href: '/vip', -> 'Exclusive Stuff'
-                else
-                  li -> a href: '/commoners', -> 'Just Stuff'
+			nav ->
+				ul ->
+					(li -> a href: '/', -> 'Home') unless @path is '/'
+					li -> a href: '/chunky', -> 'Bacon!'
+					switch @user.role
+						when 'owner', 'admin'
+							li -> a href: '/admin', -> 'Secret Stuff'
+						when 'vip'
+							li -> a href: '/vip', -> 'Exclusive Stuff'
+						else
+							li -> a href: '/commoners', -> 'Just Stuff'
 
-        div '#myid.myclass.anotherclass', style: 'position: fixed', ->
-          p 'Divitis kills! Inline styling too.'
+		div '#myid.myclass.anotherclass', style: 'position: fixed', ->
+			p 'Divitis kills! Inline styling too.'
 
-        section ->
-          # A helper function you built and included.
-          breadcrumb separator: '>', clickable: yes
+		section ->
+			# A helper function you built and included.
+			breadcrumb separator: '>', clickable: yes
 
-          h2 "Let's count to 10:"
-          p i for i in [1..10]
+			h2 "Let's count to 10:"
+			p i for i in [1..10]
 
-          # Another hypothetical helper.
-          form_to @post, ->
-            textbox '#title', label: 'Title:'
-            textbox '#author', label: 'Author:'
-            submit 'Save'
+			# Another hypothetical helper.
+			form_to @post, ->
+				textbox '#title', label: 'Title:'
+				textbox '#author', label: 'Author:'
+				submit 'Save'
 
-        footer ->
-          # CoffeeScript comments. Not visible in the output document.
-          comment 'HTML comments.'
-          p 'Bye!'
-~~~~~
+		footer ->
+			# CoffeeScript comments. Not visible in the output document.
+			comment 'HTML comments.'
+			p 'Bye!'
+~~~
 
 Interactive demo at [coffeekup.org](http://coffeekup.org).
 
@@ -171,74 +171,89 @@ Or to use the latest version:
 
 ## Using
 
-    cf = require 'coffeefilter'
+~~~ coffeescript
+cf = require 'coffeefilter'
 
-    cf.render -> h1 "You can feed me templates as functions."
-    cf.render "h1 'Or strings. I am not too picky.'"
+cf.render -> h1 "You can feed me templates as functions."
+cf.render "h1 'Or strings. I am not too picky.'"
+~~~
 
 Defining variables:
 **TODO: rewrite this, this is not how it works**
 
-    template = ->
-      h1 @title
-      form method: 'post', action: 'login', ->
-        textbox id: 'username'
-        textbox id: 'password'
-        button @title
+~~~ coffeescript
+template = ->
+	h1 @title
+	form method: 'post', action: 'login', ->
+		textbox id: 'username'
+		textbox id: 'password'
+		button @title
 
-    helpers =
-      textbox: (attrs) ->
-        attrs.type = 'text'
-        attrs.name = attrs.id
-        input attrs
+helpers =
+	textbox: (attrs) ->
+		attrs.type = 'text'
+		attrs.name = attrs.id
+		input attrs
 
-    cf.render(template, title: 'Log In', hardcode: helpers)
+cf.render(template, title: 'Log In', hardcode: helpers)
+~~~
 
 Precompiling to functions:
 
-    template = cf.compile(template, locals: yes, hardcode: {zig: 'zag'})
+~~~ coffeescript
+template = cf.compile(template, locals: yes, hardcode: {zig: 'zag'})
 
-    template(foo: 'bar', locals: {ping: 'pong'})
+template(foo: 'bar', locals: {ping: 'pong'})
+~~~
 
 With [express](http://expressjs.com):
 
-    app.set 'view engine', 'coffee'
-		server.engine '.coffee', require('coffeefilter').adapters.express
+~~~ coffeescript
+coffeefilter = require 'coffeefilter'
+app.set 'view engine', 'coffee'
+app.engine '.coffee', coffeefilter.adapters.express
 
-    app.get '/', (req, res) ->
-      # Will render views/index.coffee:
-      res.render 'index', foo: 'bar'
+app.get '/', (req, res) ->
+	# Will render views/index.coffee:
+	res.render 'index', foo: 'bar'
+~~~
 
 With [zappa](http://github.com/mauricemach/zappa):
 
-    get '/': ->
-      @franks = ['miller', 'oz', 'sinatra', 'zappa']
-      render 'index'
+~~~ coffeescript
+get '/': ->
+	@franks = ['miller', 'oz', 'sinatra', 'zappa']
+	render 'index'
 
-    view index: ->
-      for name in @franks
-        a href: "http://en.wikipedia.org/wiki/Frank_#{name}", -> name
+view index: ->
+	for name in @franks
+		a href: "http://en.wikipedia.org/wiki/Frank_#{name}", -> name
+~~~
 
 With
 [meryl](https://github.com/kadirpekel/meryl/tree/master/examples/coffeekup-template):
 
-    coffeefilter = require 'coffeefilter'
+~~~ coffeescript
+coffeefilter = require 'coffeefilter'
 
-    meryl.get '/', (req, resp) ->
-      people = ['bob', 'alice', 'meryl']
-      resp.render 'layout', content: 'index', context: {people: people}
+meryl.get '/', (req, resp) ->
+	people = ['bob', 'alice', 'meryl']
+	resp.render 'layout', content: 'index', context: {people: people}
 
-    meryl.run
-      templateExt: '.coffee'
-      templateFunc: coffeefilter.adapters.meryl
+meryl.run
+	templateExt: '.coffee'
+	templateFunc: coffeefilter.adapters.meryl
+~~~
 
 On the browser:
 **TODO: make sure this works, it probably doesn't now**
 
-    <script src="template.js"></script>
-    <script>
-      $('body').append(templates.template({foo: 'bar'}));
-    </script>
+~~~ html
+<script src="template.js"></script>
+<script>
+	$('body').append(templates.template({foo: 'bar'}));
+</script>
+~~~
 
 This is one of many browser deployment possibilities, pre-compiling your
 template on the server to a standalone function. To see all serving
