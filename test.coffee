@@ -1,5 +1,8 @@
+with_base_params =
+	settings:
+		views: './test_templates'
 tests =
-  'Literal text':
+	'Literal text':
     template: "text 'Just text'"
     expected: 'Just text'
 
@@ -137,57 +140,113 @@ tests =
     template: "p \"This text could use \#{cede -> strong -> a href: '/', 'a link'}.\""
     expected: '<p>This text could use <strong><a href="/">a link</a></strong>.</p>'
 
+	'Template function':
+		template: ->
+			h1 class: "main", -> "A Header"
+			div -> p -> "Some text"
+		expected: '<h1 class="main">A Header</h1><div><p>Some text</p></div>'
+
+	'Expected throws, "integer" template':
+		template: 87
+		expects_exception: true
+
+	'Expected throws, bad template':
+		template: 'looks_like_a_file.coffee'
+		expects_exception: true
+
+	'Expected throws, template file not found':
+		template: 'test_templates/non_existing_file.coffee'
+		expects_exception: true
+
+	'Template file':
+		template: 'test_templates/simple.coffee'
+		expected: '<html><head></head><body><h3>Hi there</h3></body></html>'
+
+	'Template file with blocks':
+		template: 'test_templates/base.coffee'
+		expected: '<p>Base template</p><p class="base">Base\'s main block</p>'
+
+	'Template file with base, no blocks':
+		template: 'test_templates/sub_no_blocks.coffee'
+		expected: '<p>Base template</p><p class="base">Base\'s main block</p>'
+		params: with_base_params
+
+	'Template file with base, fill extra block':
+		template: 'test_templates/sub_extra.coffee'
+		expected: '<p>Base template</p><p class="base">Base\'s main block</p><b>Extra!</b>'
+		params: with_base_params
+
+	'Template file with base, fill all blocks':
+		template: 'test_templates/sub_all.coffee'
+		expected: '<p>Base template</p><h1>Sub for the win!</h1>And the extra too'
+		params: with_base_params
+
 cf = require './src/coffeefilter'
 render = cf.render
+TemplateCompilationError = cf.TemplateCompilationError
 
 @run = ->
-  {print} = require 'sys'
-  colors = {red: "\u001b[31m", redder: "\u001b[91m", green: "\u001b[32m", normal: "\u001b[0m"}
-  printc = (color, str) -> print colors[color] + str + colors.normal
+	{print} = require 'sys'
 
-  [total, passed, failed, errors] = [0, [], [], []]
+	colors = {red: "\u001b[31m", redder: "\u001b[91m", green: "\u001b[32m", normal: "\u001b[0m"}
+	printc = (color, str) -> print colors[color] + str + colors.normal
 
-  for name, test of tests
-    total++
-    try
-      test.original_params = JSON.stringify test.params
+	[total, passed, failed, errors] = [0, [], [], []]
 
-      if test.run
-        test.run()
-      else
-        test.result = cf.render(test.template, test.params)
-        test.success = test.result is test.expected
+	pass_test = (name, test) ->
+		passed.push name
+		print "[Passed] #{name}\n"
+	fail_test = (name, test) ->
+		failed.push name
+		printc 'red', "[Failed] #{name}\n"
+	error_test = (name, test, ex) ->
+		test.result = ex
+		errors.push name
+		printc 'redder', "[Error]  #{name}\n"
 
-      if test.success
-        passed.push name
-        print "[Passed] #{name}\n"
-      else
-        failed.push name
-        printc 'red', "[Failed] #{name}\n"
-    catch ex
-      test.result = ex
-      errors.push name
-      printc 'redder', "[Error]  #{name}\n"
+	for name, test of tests
+		total++
+		try
+			test.original_params = JSON.stringify test.params
 
-  print "\n#{total} tests, #{passed.length} passed, #{failed.length} failed, #{errors.length} errors\n\n"
+			if test.run
+				test.run()
+			else
+				test.result = cf.render test.template, test.params
+				test.success = test.result is test.expected
 
-  if failed.length > 0
-    printc 'red', "FAILED:\n\n"
+			if test.success
+				pass_test name, test
+			else
+				fail_test name, test
+		catch ex
+			if test.expects_exception?
+				test.result = ex
+				pass_test name, test
+			else
+				error_test name, test, ex
 
-    for name in failed
-      t = tests[name]
-      print "- #{name}:\n"
-      print t.template + "\n"
-      print t.original_params + "\n" if t.params
-      printc 'green', t.expected + "\n"
-      printc 'red', t.result + "\n\n"
+	print "\n#{total} tests, #{passed.length} passed, #{failed.length} failed, #{errors.length} errors\n\n"
 
-  if errors.length > 0
-    printc 'redder', "ERRORS:\n\n"
+	if failed.length > 0
+		printc 'red', "FAILED:\n\n"
 
-    for name in errors
-      t = tests[name]
-      print "- #{name}:\n"
-      print t.template + "\n"
-      printc 'green', t.expected + "\n"
-      printc 'redder', t.result.stack + "\n\n"
+		for name in failed
+			t = tests[name]
+			print "- #{name}:\n"
+			print t.template + "\n"
+			print t.original_params + "\n" if t.params
+			printc 'green', "Expected:\n"
+			printc 'green', t.expected + "\n"
+			printc 'red',   "Actual:\n"
+			printc 'red',   t.result + "\n\n"
+
+	if errors.length > 0
+		printc 'redder', "ERRORS:\n\n"
+
+		for name in errors
+			t = tests[name]
+			print "- #{name}:\n"
+			print t.template + "\n"
+			printc 'green', t.expected + "\n"
+			printc 'redder', t.result.stack + "\n\n"

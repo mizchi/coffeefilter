@@ -351,6 +351,14 @@ skeleton = String(skeleton)
 
 skeleton = coffeescript_helpers + skeleton
 
+class TemplateCompilationError extends Error
+	constructor: (@message) ->
+		Error.call this, @message
+		Error.captureStackTrace this, arguments.callee
+		name: 'TemplateCompilationError'
+
+coffeefilter.TemplateCompilationError = TemplateCompilationError
+
 # Compiles a template into a standalone JavaScript function.
 coffeefilter.compile = (template, data = {}) ->
 	use_cache = data.cache ?= off
@@ -369,17 +377,21 @@ coffeefilter.compile = (template, data = {}) ->
 			filename = "[Some function]"
 			use_cache = false
 			template = String(template)
-		else if typeof template is 'string' and endswith template, '.coffee'
-			filename = template
-			if use_cache and cache[filename]?
-				return cache[filename]
-			else
-				template = fs.readFileSync filename, 'utf8'
 		else if typeof template is 'string' and coffee?
-			filename = "[Inline template]"
-			use_cache = false
-		template = coffee.compile template, bare: yes
-		template = "function(){#{template}}"
+			if endswith template, '.coffee'
+				filename = template
+				if use_cache and cache[filename]?
+					return cache[filename]
+				else
+					template = fs.readFileSync filename, 'utf8'
+			else
+				filename = "[Inline template]"
+				use_cache = false
+
+			template = coffee.compile template, bare: yes
+			template = "function(){#{template}}"
+		else
+			throw new TemplateCompilationError "Unknown template, type: #{typeof template}, template: #{template}"
 
 		# Add a function for each tag this template references. We don't want to have
 		# all hundred-odd tags wasting space in the compiled function.
