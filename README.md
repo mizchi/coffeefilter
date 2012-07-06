@@ -284,6 +284,8 @@ Command-line:
 See [/examples](http://github.com/tgwizard/coffeefilter/tree/master/examples)
 for complete versions (you have to run `cake build` first).
 
+**TODO: make these examples work...**
+
 Please note that even though all examples are given in CoffeeScript, you can
 also use their plain JavaScript counterparts just fine.
 
