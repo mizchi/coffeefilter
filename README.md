@@ -1,8 +1,8 @@
 # CoffeeFilter <☕/>
 
 This is my branch of the original
-[Coffeekup](https://github.com/mauricemach/coffeekup). I have great plans, but
-they are not all implemented yet.
+[Coffeekup](https://github.com/mauricemach/coffeekup). I have great plans for
+it, but they are not all implemented yet.
 
 Changes from CoffeeKup:
 
@@ -11,6 +11,12 @@ Changes from CoffeeKup:
 * Supports template inheritance with the `base` function, and injecting
 	content into the parent template with the `block` function.
 * `yield` has been renamed to `cede` to work with newer CoffeeScript versions
+
+TODO:
+
+* Clean up the code (a lot, and rewrite the template inheritance thingy)
+* Allow for partials (or use express3 functionality for it)
+* More...
 
 Not safe for production use...
 
