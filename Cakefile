@@ -1,8 +1,9 @@
 {spawn, exec} = require 'child_process'
 log = console.log
 
-task 'build', ->
-  run 'coffee -o lib -c src/*.coffee'
+# build from the Makefile:
+# > make all
+# TODO: remove the Cakefile completely
 
 task 'test', -> require('./test').run()
 
