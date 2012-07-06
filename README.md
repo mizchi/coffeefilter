@@ -339,10 +339,10 @@ also use their plain JavaScript counterparts just fine.
 
 ## Compatibility
 
-Latest version tested with node 0.4.9 and CoffeeScript 1.1.1.
+Latest version tested with node 0.8.1 and CoffeeScript 1.3.3.
 
 ## Special thanks
 
-	- [Jeremy Ashkenas](https://github.com/jashkenas), for the amazing
-		CoffeeScript language.
-  - [why the lucky stiff](Why_the_lucky_stiff), for the inspiration.
+- [Jeremy Ashkenas](https://github.com/jashkenas), for the amazing
+	CoffeeScript language.
+- [why the lucky stiff](Why_the_lucky_stiff), for the inspiration.
