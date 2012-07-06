@@ -1,4 +1,5 @@
 .DS_Store
+npm-debug.log
 material/
 node_modules/
 lib/
