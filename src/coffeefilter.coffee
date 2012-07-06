@@ -461,6 +461,10 @@ unless window?
 		simple: coffeefilter.render
 		meryl: coffeefilter.render
 		express: (filename, data, callback) ->
+			if typeof data == 'function'
+				[callback, data] = [data, callback]
+			if data == null
+				data = {}
 			data.filename = filename
 			str = coffeefilter.render filename, data
 			callback null, str
