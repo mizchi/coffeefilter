@@ -2,6 +2,7 @@
 
 This is my branch of the original
 [Coffeekup](https://github.com/mauricemach/coffeekup). I have great plans, but
+they are not all implemented yet.
 
 Changes from CoffeeKup:
 
