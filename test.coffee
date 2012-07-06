@@ -137,8 +137,8 @@ tests =
     template: "p \"This text could use \#{cede -> strong -> a href: '/', 'a link'}.\""
     expected: '<p>This text could use <strong><a href="/">a link</a></strong>.</p>'
 
-ck = require './src/coffeekup'
-render = ck.render
+cf = require './src/coffeefilter'
+render = cf.render
 
 @run = ->
   {print} = require 'sys'
@@ -155,7 +155,7 @@ render = ck.render
       if test.run
         test.run()
       else
-        test.result = ck.render(test.template, test.params)
+        test.result = cf.render(test.template, test.params)
         test.success = test.result is test.expected
 
       if test.success

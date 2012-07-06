@@ -10,18 +10,18 @@
 # stiff.
 
 if window?
-	coffeekup = window.CoffeeKup = {}
+	coffeefilter = window.CoffeeKup = {}
 	coffee = if CoffeeScript? then CoffeeScript else null
 else
-	coffeekup = exports
+	coffeefilter = exports
 	coffee = require 'coffee-script'
 	fs = require 'fs'
 
-coffeekup.version = '0.3.1edge'
+coffeefilter.version = '0.3.1edge'
 
 # Values available to the `doctype` function inside a template.
 # Ex.: `doctype 'strict'`
-coffeekup.doctypes =
+coffeefilter.doctypes =
 	'default': '<!DOCTYPE html>'
 	'5': '<!DOCTYPE html>'
 	'xml': '<?xml version="1.0" encoding="utf-8" ?>'
@@ -87,13 +87,13 @@ merge_elements = (args...) ->
 # Public/customizable list of possible elements.
 # For each name in this list that is also present in the input template code,
 # a function with the same name will be added to the compiled template.
-coffeekup.tags = merge_elements 'regular', 'obsolete', 'void', 'obsolete_void'
+coffeefilter.tags = merge_elements 'regular', 'obsolete', 'void', 'obsolete_void'
 
 # Public/customizable list of elements that should be rendered self-closed.
-coffeekup.self_closing = merge_elements 'void', 'obsolete_void'
+coffeefilter.self_closing = merge_elements 'void', 'obsolete_void'
 
 # This is the basic material from which compiled templates will be formed.
-# It will be manipulated in its string form at the `coffeekup.compile` function
+# It will be manipulated in its string form at the `coffeefilter.compile` function
 # to generate the final template function.
 skeleton = (data = {}) ->
 	# Whether to generate formatted HTML with indentation and line breaks, or
@@ -111,7 +111,7 @@ skeleton = (data = {}) ->
 			name: 'TemplateError'
 
 	# Internal CoffeeKup stuff.
-	__ck =
+	__cf =
 		is_ceding: false
 
 		root_node:
@@ -243,9 +243,9 @@ skeleton = (data = {}) ->
 
 			null
 
-	__ck.current_node = __ck.root_node
-	__ck.nodes =
-		'__root_node': __ck.root_node
+	__cf.current_node = __cf.root_node
+	__cf.nodes =
+		'__root_node': __cf.root_node
 
 	tag = (name, args...) ->
 		for a in args
@@ -265,7 +265,7 @@ skeleton = (data = {}) ->
 						else
 							contents = a
 
-		__ck.write_tag(name, idclass, attrs, contents)
+		__cf.write_tag(name, idclass, attrs, contents)
 
 	h = (txt) ->
 		String(txt).replace(/&/g, '&amp;')
@@ -274,21 +274,21 @@ skeleton = (data = {}) ->
 			.replace(/"/g, '&quot;')
 
 	doctype = (type = 'default') ->
-		text __ck.doctypes[type]
+		text __cf.doctypes[type]
 		text '\n' if data.format
 
 	cede = (f) ->
 		temp_buffer = []
-		__ck.is_ceding = true
-		old_buffer = __ck.current_node.buffer
-		__ck.current_node.buffer = temp_buffer
+		__cf.is_ceding = true
+		old_buffer = __cf.current_node.buffer
+		__cf.current_node.buffer = temp_buffer
 		f()
-		__ck.current_node.buffer = old_buffer
-		__ck.is_ceding = false
+		__cf.current_node.buffer = old_buffer
+		__cf.is_ceding = false
 		temp_buffer.join ''
 
 	text = (txt) ->
-		__ck.current_node.buffer.push String(txt)
+		__cf.current_node.buffer.push String(txt)
 		null
 
 	comment = (cmt) ->
@@ -300,7 +300,7 @@ skeleton = (data = {}) ->
 			# `coffeescript -> alert 'hi'` becomes:
 			# `<script>;(function () {return alert('hi');})();</script>`
 			when 'function'
-				script "#{__ck.coffeescript_helpers}(#{param}).call(this);"
+				script "#{__cf.coffeescript_helpers}(#{param}).call(this);"
 			# `coffeescript "alert 'hi'"` becomes:
 			# `<script type="text/coffeescript">alert 'hi'</script>`
 			when 'string'
@@ -313,33 +313,33 @@ skeleton = (data = {}) ->
 
 	# Conditional IE comments.
 	ie = (condition, contents) ->
-		__ck.indent()
+		__cf.indent()
 
 		text "<!--[if #{condition}]>"
-		__ck.write_contents(contents)
+		__cf.write_contents(contents)
 		text "<![endif]-->"
 		text '\n' if data.format
 
 	base = (base) ->
-		if __ck.root_node.buffer.length != 0
+		if __cf.root_node.buffer.length != 0
 			throw new TemplateError "Calls to base need to be first in your template"
-		if __ck.base?
+		if __cf.base?
 			throw new TemplateError "You can only inherit from one template"
-		base_template = data.__ck.compile data.settings.views + "/" + base + ".coffee", data
-		__ck.base = base_template data
+		base_template = data.__cf.compile data.settings.views + "/" + base + ".coffee", data
+		__cf.base = base_template data
 
 	block = (id, contents) ->
 		node =
 			id: id
 			buffer: []
 			children_pos: {}
-			parent: __ck.current_node
+			parent: __cf.current_node
 		node.parent.children_pos[id] = node.parent.buffer.length
 		text "[Block: #{id}"
-		__ck.nodes[id] = node
-		__ck.current_node = node
-		__ck.write_contents contents
-		__ck.current_node = node.parent
+		__cf.nodes[id] = node
+		__cf.current_node = node
+		__cf.write_contents contents
+		__cf.current_node = node.parent
 
 	null
 
@@ -352,11 +352,11 @@ skeleton = String(skeleton)
 skeleton = coffeescript_helpers + skeleton
 
 # Compiles a template into a standalone JavaScript function.
-coffeekup.compile = (template, data = {}) ->
+coffeefilter.compile = (template, data = {}) ->
 	use_cache = data.cache ?= off
 
-	data.__ck =
-		compile: coffeekup.compile
+	data.__cf =
+		compile: coffeefilter.compile
 
 	try
 		endswith = (str, end) ->
@@ -386,27 +386,27 @@ coffeekup.compile = (template, data = {}) ->
 		tag_functions = ''
 		tags_used = []
 
-		for t in coffeekup.tags
+		for t in coffeefilter.tags
 			if template.indexOf(t) > -1
 				tags_used.push t
 
 		tag_functions += "var #{tags_used.join ','};"
 		for t in tags_used
-			tag_functions += "#{t} = function(){return __ck.tag('#{t}', arguments);};"
+			tag_functions += "#{t} = function(){return __cf.tag('#{t}', arguments);};"
 
 		# Main function assembly.
 		code = tag_functions + skeleton
 
-		code += "__ck.doctypes = #{JSON.stringify coffeekup.doctypes};"
-		code += "__ck.coffeescript_helpers = #{JSON.stringify coffeescript_helpers};"
-		code += "__ck.self_closing = #{JSON.stringify coffeekup.self_closing};"
+		code += "__cf.doctypes = #{JSON.stringify coffeefilter.doctypes};"
+		code += "__cf.coffeescript_helpers = #{JSON.stringify coffeescript_helpers};"
+		code += "__cf.self_closing = #{JSON.stringify coffeefilter.self_closing};"
 
 		# If `locals` is set, wrap the template inside a `with` block. This is the
 		# most flexible but slower approach to specifying local variables.
 		code += 'with(data.locals){' if data.locals
 		code += "(#{template}).call(data);"
 		code += '}' if data.locals
-		code += "return __ck;"
+		code += "return __cf;"
 
 		compiled_template = new Function('data', code)
 
@@ -425,7 +425,7 @@ class TemplateError extends Error
 		Error.captureStackTrace this, arguments.callee
 		name: 'TemplateError'
 
-# Template in, HTML out. Accepts functions or strings as does `coffeekup.compile`.
+# Template in, HTML out. Accepts functions or strings as does `coffeefilter.compile`.
 #
 # Accepts an option `cache`, by default `false`. If set to `false` templates will
 # be recompiled each time.
@@ -434,9 +434,9 @@ class TemplateError extends Error
 # data, but the two will be merged and passed down to the compiler (which uses
 # `locals` and `hardcode`), and the template (which understands `locals`, `format`
 # and `autoescape`).
-coffeekup.render = (filename, data = {}) ->
+coffeefilter.render = (filename, data = {}) ->
 	data.filename = filename
-	tpl = coffeekup.compile filename, data
+	tpl = coffeefilter.compile filename, data
 
 	try
 		(tpl data).render()
@@ -444,11 +444,11 @@ coffeekup.render = (filename, data = {}) ->
 
 
 unless window?
-	coffeekup.adapters =
+	coffeefilter.adapters =
 		# Legacy adapters for when CoffeeKup expected data in the `context` attribute.
-		simple: coffeekup.render
-		meryl: coffeekup.render
+		simple: coffeefilter.render
+		meryl: coffeefilter.render
 		express: (filename, data, callback) ->
 			data.filename = filename
-			str = coffeekup.render filename, data
+			str = coffeefilter.render filename, data
 			callback null, str

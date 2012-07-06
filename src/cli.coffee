@@ -1,4 +1,4 @@
-coffeekup = require './coffeekup'
+coffeefilter = require './coffeefilter'
 fs = require 'fs'
 path = require 'path'
 puts = console.log
@@ -16,10 +16,10 @@ compile = (input_path, output_directory, js, namespace = 'templates') ->
     name = path.basename input_path, path.extname(input_path)
 
     if not js
-      output = coffeekup.render contents, options
+      output = coffeefilter.render contents, options
       ext = '.html'
     else
-      func = coffeekup.compile contents, options
+      func = coffeefilter.compile contents, options
       output = """
         (function(){ 
           this.#{namespace} || (this.#{namespace} = {});
@@ -45,7 +45,7 @@ write = (input_path, name, contents, output_directory, ext) ->
 
 usage = '''
   Usage:
-    coffeekup [options] path/to/template.coffee
+    coffeefilter [options] path/to/template.coffee
 '''
 
 switches = [
@@ -67,12 +67,12 @@ switches = [
   delete options.arguments
 
   puts parser.help() if options.help or argv.length is 0
-  puts coffeekup.version if options.version
+  puts coffeefilter.version if options.version
   if options.utils
     options.locals ?= {}
     options.locals.render = (file) ->
       contents = fs.readFileSync file, 'utf-8'
-      coffeekup.render contents, options
+      coffeefilter.render contents, options
 
   if args.length > 0
     file = args[0]

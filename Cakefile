@@ -9,7 +9,7 @@ task 'test', -> require('./test').run()
 task 'bench', -> require('./benchmark').run()
 
 task 'docs', ->
-  run 'docco src/coffeekup.coffee'
+  run 'docco src/coffeefilter.coffee'
 
 run = (args...) ->
   for a in args
