@@ -1,4 +1,4 @@
-base 'base'
+extend 'base'
 block 'extra', ->
 	b ->
 		"Extra!"

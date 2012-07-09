@@ -51,7 +51,7 @@ coffeescript_helpers = """
 		for (var i = 0, l = this.length; i < l; i++) {
 			if (this[i] === item) return i;
 		} return -1; };
-""".replace(/\n/g, '').replace(/\t/g, '  ')
+""".replace(/\n/g, '').replace(/\t/g, ' ')
 
 # Private HTML element reference.
 # Please mind the gap (1 space at the beginning of each subsequent line).
@@ -320,7 +320,7 @@ skeleton = (data = {}) ->
 		text "<![endif]-->"
 		text '\n' if data.format
 
-	base = (base) ->
+	extend = (base) ->
 		if __cf.root_node.buffer.length != 0
 			throw new TemplateError "Calls to base need to be first in your template"
 		if __cf.base?
@@ -425,7 +425,7 @@ coffeefilter.compile = (template, data = {}) ->
 		if use_cache
 			cache[filename] = compiled_template
 	catch e
-		throw new TemplateError "Error compiling #{filename}: #{e.message}"
+		throw new TemplateCompilationError "Error compiling #{filename}: #{e.message}"
 
 	compiled_template
 

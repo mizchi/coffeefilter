@@ -14,8 +14,10 @@ clean:
 	@echo "Cleaning coffeefilter..."
 	rm -rf lib
 
-test:
-	cake test
+.PHONY: test
+test: all
+	@#cake test
+	mocha --compilers coffee:coffee-script --ui tdd
 
 bench:
 	cake bench
