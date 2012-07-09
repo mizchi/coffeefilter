@@ -3,9 +3,10 @@ log = console.log
 
 # build from the Makefile:
 # > make all
+# run tests from the Makefile:
+# > make test
+#
 # TODO: remove the Cakefile completely
-
-task 'test', -> require('./test').run()
 
 task 'bench', -> require('./benchmark').run()
 
