@@ -10,7 +10,7 @@ Changes from CoffeeKup:
 * Supports CoffeeScript 1.3.3
 * Supports template inheritance with the `extend` function, and injecting
 	content into the parent template with the `block` function.
-* `yield` has been renamed to `cede` to work with newer CoffeeScript versions
+* `yield` has been renamed to `cede` to work with newer CoffeeScript versions.
 
 TODO:
 
