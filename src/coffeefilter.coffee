@@ -110,7 +110,7 @@ skeleton = (data = {}) ->
 			Error.captureStackTrace this, arguments.callee
 			name: 'TemplateError'
 
-	# Internal CoffeeKup stuff.
+	# Internal coffeefilter stuff.
 	__cf =
 		is_ceding: false
 
@@ -147,31 +147,32 @@ skeleton = (data = {}) ->
 			else
 				@render_without_base()
 
-		render_with_base: ->
-			for key of @nodes
-				node = @nodes[key]
-				if node.parent?
-					# this skips this templates root node
-					same_node = @base.nodes[node.id]
-					node.parent = if same_node? then same_node.parent else null
-			@base.render()
-			@render_nodes()
-			@base.root_node.buffer.join ''
-
 		render_without_base: ->
-			@render_nodes()
-			@root_node.buffer.join ''
+			@render_node @root_node
 
-		render_nodes: ->
-			for key of @nodes
-				node = @nodes[key]
-				# the root node doesn't have a parent
-				# and nodes in templates with a base that don't
-				# have a corresponding node in the base template
-				# don't have parents either
-				if node.parent?
-					content = node.buffer.join ''
-					node.parent.buffer[node.parent.children_pos[node.id]] = content
+		render_with_base: ->
+			@update_node @root_node
+			@base.render()
+
+		update_node: (node) ->
+			if node.parent?
+				same_node = @base.nodes[node.id]
+				if same_node?
+					# the same node exists in base, copy the parent from it
+					node.parent = same_node.parent
+				# write this node to base, either overwriting existing
+				# or writing a new node
+				@base.nodes[node.id] = node
+			for child_id of node.children_pos
+				child = @nodes[child_id]
+				@update_node child
+
+		render_node: (node) ->
+			for child_id of node.children_pos
+				child = @nodes[child_id]
+				child_content = @render_node child
+				node.buffer[node.children_pos[child_id]] = child_content
+			node.buffer.join ''
 
 		write_idclass: (str) ->
 			classes = []
@@ -335,7 +336,7 @@ skeleton = (data = {}) ->
 			children_pos: {}
 			parent: __cf.current_node
 		node.parent.children_pos[id] = node.parent.buffer.length
-		text "[Block: #{id}"
+		text "[Block: #{id}]"
 		__cf.nodes[id] = node
 		__cf.current_node = node
 		__cf.write_contents contents

@@ -34,6 +34,31 @@ suite 'inheritance', ->
 		assert.equal (render t),
 			'<p>Base template</p><h1>Sub for the win!</h1>And the extra too'
 
+	test 'sub template, add new block', ->
+		t = tp 'sub_new_block.coffee'
+		assert.equal (render t),
+			'<p>Base template</p><p class="base">Base\'s main block</p><p>extra block</p><p>new block</p>'
+
+	test 'sub in sub in base', ->
+		t = tp 'sub_sub.coffee'
+		assert.equal (render t),
+			'<p>Base template</p><h1>Sub for the win!</h1><p>sub sub extra!</p>'
+
+	test 'block in block', ->
+		t = tp 'block_in_block_base.coffee'
+		assert.equal (render t),
+			'<p>Rafael</p><p>Leonardo</p><p>Emile</p>'
+
+	test 'block in block, sub', ->
+		t = tp 'block_in_block_sub.coffee'
+		assert.equal (render t),
+			'<p>Rafael</p><p>Leonardo</p><p>Michelangelo</p>'
+
+	test 'block in block, sub sub', ->
+		t = tp 'block_in_block_sub_sub.coffee'
+		assert.equal (render t),
+			'<p>Rafael</p><p>Leonardo</p><p>Buffy</p>'
+
 suite 'bad template arguments', ->
 	test '"integer" template', ->
 		t = 87
