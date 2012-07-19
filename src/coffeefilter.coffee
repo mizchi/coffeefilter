@@ -19,6 +19,18 @@ else
 
 coffeefilter.version = '0.3.1edge'
 
+class TemplateError extends Error
+	constructor: (@message) ->
+		Error.call this, @message
+		Error.captureStackTrace this, arguments.callee
+		name: 'TemplateError'
+
+class TemplateCompilationError extends Error
+	constructor: (@message) ->
+		Error.call this, @message
+		Error.captureStackTrace this, arguments.callee
+		name: 'TemplateCompilationError'
+
 # Values available to the `doctype` function inside a template.
 # Ex.: `doctype 'strict'`
 coffeefilter.doctypes =
@@ -104,14 +116,9 @@ skeleton = (data = {}) ->
 	# basis with the `h` function.
 	data.autoescape ?= off
 
-	class TemplateError extends Error
-		constructor: (@message) ->
-			Error.call this, @message
-			Error.captureStackTrace this, arguments.callee
-			name: 'TemplateError'
-
 	# Internal coffeefilter stuff.
 	__cf =
+		# data
 		is_ceding: false
 
 		root_node:
@@ -121,26 +128,12 @@ skeleton = (data = {}) ->
 			parent: null
 
 		current_node: null
-
 		nodes: null
-
 		base: null
-
-		esc: (txt) ->
-			if data.autoescape then h(txt) else String(txt)
 
 		tabs: 0
 
-		repeat: (string, count) -> Array(count + 1).join string
-
-		indent: -> text @repeat('  ', @tabs) if data.format
-
-		# Adapter to keep the builtin tag functions DRY.
-		tag: (name, args) ->
-			combo = [name]
-			combo.push i for i in args
-			tag.apply data, combo
-
+		# render methods, not to be called from inside skeleton
 		render: ->
 			if @base?
 				@render_with_base()
@@ -173,6 +166,22 @@ skeleton = (data = {}) ->
 				child_content = @render_node child
 				node.buffer[node.children_pos[child_id]] = child_content
 			node.buffer.join ''
+
+		# content-writing methods
+		# Adapter to keep the builtin tag functions DRY.
+		tag: (name, args) ->
+			combo = [name]
+			combo.push i for i in args
+			tag.apply data, combo
+
+		repeat: (string, count) ->
+			Array(count + 1).join string
+
+		indent: ->
+			text @repeat('  ', @tabs) if data.format
+
+		esc: (txt) ->
+			if data.autoescape then h(txt) else String(txt)
 
 		write_idclass: (str) ->
 			classes = []
@@ -248,6 +257,8 @@ skeleton = (data = {}) ->
 	__cf.nodes =
 		'__root_node': __cf.root_node
 
+	# functions available to the template writer
+	# "built-in" tag functions available as well
 	tag = (name, args...) ->
 		for a in args
 			switch typeof a
@@ -344,28 +355,12 @@ skeleton = (data = {}) ->
 
 	null
 
-# Stringify the skeleton and unwrap it from its enclosing `function(){}`, then
-# add the CoffeeScript helpers.
-skeleton = String(skeleton)
-	.replace(/function\s*\(.*\)\s*\{/, '')
-	.replace(/return null;\s*\}$/, '')
 
-skeleton = coffeescript_helpers + skeleton
 
-class TemplateCompilationError extends Error
-	constructor: (@message) ->
-		Error.call this, @message
-		Error.captureStackTrace this, arguments.callee
-		name: 'TemplateCompilationError'
-
-coffeefilter.TemplateCompilationError = TemplateCompilationError
-
+cache = {}
 # Compiles a template into a standalone JavaScript function.
 coffeefilter.compile = (template, data = {}) ->
 	use_cache = data.cache ?= off
-
-	data.__cf =
-		compile: coffeefilter.compile
 
 	try
 		endswith = (str, end) ->
@@ -394,49 +389,80 @@ coffeefilter.compile = (template, data = {}) ->
 		else
 			throw new TemplateCompilationError "Unknown template, type: #{typeof template}, template: #{template}"
 
-		# Add a function for each tag this template references. We don't want to have
-		# all hundred-odd tags wasting space in the compiled function.
-		tag_functions = ''
-		tags_used = []
-
-		for t in coffeefilter.tags
-			if template.indexOf(t) > -1
-				tags_used.push t
-
-		tag_functions += "var #{tags_used.join ','};"
-		for t in tags_used
-			tag_functions += "#{t} = function(){return __cf.tag('#{t}', arguments);};"
-
-		# Main function assembly.
-		code = tag_functions + skeleton
-
-		code += "__cf.doctypes = #{JSON.stringify coffeefilter.doctypes};"
-		code += "__cf.coffeescript_helpers = #{JSON.stringify coffeescript_helpers};"
-		code += "__cf.self_closing = #{JSON.stringify coffeefilter.self_closing};"
-
-		# If `locals` is set, wrap the template inside a `with` block. This is the
-		# most flexible but slower approach to specifying local variables.
-		code += 'with(data.locals){' if data.locals
-		code += "(#{template}).call(data);"
-		code += '}' if data.locals
-		code += "return __cf;"
-
-		compiled_template = new Function('data', code)
+		compiled_template = make_template_function template, data
 
 		if use_cache
 			cache[filename] = compiled_template
 	catch e
-		throw new TemplateCompilationError "Error compiling #{filename}: #{e.message}"
+		throw e
 
 	compiled_template
 
-cache = {}
 
-class TemplateError extends Error
-	constructor: (@message) ->
-		Error.call this, @message
-		Error.captureStackTrace this, arguments.callee
-		name: 'TemplateError'
+make_template_function = (template, data) ->
+	# embed a reference to the compile function
+	data.__cf =
+		compile: coffeefilter.compile
+
+	# Add a function for each tag this template references. We don't want to have
+	# all hundred-odd tags wasting space in the compiled function.
+	tag_functions = ''
+	tags_used = []
+
+	for t in coffeefilter.tags
+		if template.indexOf(t) > -1
+			tags_used.push t
+
+	embeds = get_embed_strings()
+
+	# Main function assembly.
+	code = embeds.get_active_tag_functions(tags_used) + embeds.skeleton + ";\n"
+
+	# If `locals` is set, wrap the template inside a `with` block. This is the
+	# most flexible but slower approach to specifying local variables.
+	code += 'with(data.locals){' if data.locals
+	code += "(#{template}).call(data);"
+	code += '}' if data.locals
+	code += "return __cf;"
+
+	new Function('data', code)
+
+
+embed_strings = null
+
+get_embed_strings = ->
+	if embed_strings?
+		return embed_strings
+
+	# Stringify functions and unwrap it from its enclosing `function(){}`, then
+	unwrap_func = (f) ->
+		r = String(f)
+			.replace(/function\s*\(.*\)\s*\{/, '')
+			.replace(/return null;\s*\}$/, '')
+		r
+
+	s = unwrap_func skeleton
+	s = coffeescript_helpers + s
+	s += "__cf.doctypes = #{JSON.stringify coffeefilter.doctypes};"
+	s += "__cf.coffeescript_helpers = #{JSON.stringify coffeescript_helpers};"
+	s += "__cf.self_closing = #{JSON.stringify coffeefilter.self_closing};"
+
+	tag_functions = {}
+	for t in coffeefilter.tags
+		tag_functions[t] = "#{t} = function(){return __cf.tag('#{t}', arguments);};"
+
+	embed_strings =
+		skeleton: s
+		tag_functions: tag_functions
+
+		get_active_tag_functions: (used_tags) ->
+			ts = "var #{used_tags.join ','};"
+			ts += (@tag_functions[t] for t in used_tags).join ''
+			ts
+
+	embed_strings
+
+
 
 # Template in, HTML out. Accepts functions or strings as does `coffeefilter.compile`.
 #
