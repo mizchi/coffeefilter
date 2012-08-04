@@ -16,6 +16,7 @@ else
 	coffeefilter = exports
 	coffee = require 'coffee-script'
 	fs = require 'fs'
+	moment = require 'moment'
 
 coffeefilter.version = '0.3.1edge'
 
@@ -353,6 +354,9 @@ skeleton = (data = {}) ->
 		__cf.write_contents contents
 		__cf.current_node = node.parent
 
+	date = (d, format = "YYYY-MM-DD") ->
+		data.__cf.moment(d).format(format)
+
 	null
 
 
@@ -403,6 +407,7 @@ make_template_function = (template, data) ->
 	# embed a reference to the compile function
 	data.__cf =
 		compile: coffeefilter.compile
+		moment: moment
 
 	# Add a function for each tag this template references. We don't want to have
 	# all hundred-odd tags wasting space in the compiled function.
