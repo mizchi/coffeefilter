@@ -363,8 +363,8 @@ skeleton = (data = {}) ->
 
 cache = {}
 # Compiles a template into a standalone JavaScript function.
-coffeefilter.compile = (template, data = {}) ->
-	use_cache = data.cache ?= off
+coffeefilter.compile = (template) ->
+	use_cache = coffeefilter.settings.cache ?= off
 
 	try
 		endswith = (str, end) ->
@@ -393,7 +393,7 @@ coffeefilter.compile = (template, data = {}) ->
 		else
 			throw new TemplateCompilationError "Unknown template, type: #{typeof template}, template: #{template}"
 
-		compiled_template = make_template_function template, data
+		compiled_template = make_template_function template
 
 		if use_cache
 			cache[filename] = compiled_template
@@ -403,12 +403,7 @@ coffeefilter.compile = (template, data = {}) ->
 	compiled_template
 
 
-make_template_function = (template, data) ->
-	# embed a reference to the compile function
-	data.__cf =
-		compile: coffeefilter.compile
-		moment: moment
-
+make_template_function = (template) ->
 	# Add a function for each tag this template references. We don't want to have
 	# all hundred-odd tags wasting space in the compiled function.
 	tag_functions = ''
@@ -425,9 +420,12 @@ make_template_function = (template, data) ->
 
 	# If `locals` is set, wrap the template inside a `with` block. This is the
 	# most flexible but slower approach to specifying local variables.
-	code += 'with(data.locals){' if data.locals
+	code += 'if(!data.locals){'
 	code += "(#{template}).call(data);"
-	code += '}' if data.locals
+	code += '}else{'
+	code += 'with(data.locals){'
+	code += "(#{template}).call(data);"
+	code += '}}'
 	code += "return __cf;"
 
 	new Function('data', code)
@@ -471,16 +469,13 @@ get_embed_strings = ->
 
 # Template in, HTML out. Accepts functions or strings as does `coffeefilter.compile`.
 #
-# Accepts an option `cache`, by default `false`. If set to `false` templates will
-# be recompiled each time.
-#
-# `options` is just a convenience parameter to pass options separately from the
-# data, but the two will be merged and passed down to the compiler (which uses
-# `locals` and `hardcode`), and the template (which understands `locals`, `format`
-# and `autoescape`).
 coffeefilter.render = (filename, data = {}) ->
-	data.filename = filename
-	tpl = coffeefilter.compile filename, data
+	# embed a reference to the compile function
+	data.__cf =
+		compile: coffeefilter.compile
+		moment: moment
+
+	tpl = coffeefilter.compile filename
 
 	try
 		(tpl data).render()
@@ -497,6 +492,5 @@ unless window?
 				[callback, data] = [data, callback]
 			if data == null
 				data = {}
-			data.filename = filename
 			str = coffeefilter.render filename, data
 			callback null, str
