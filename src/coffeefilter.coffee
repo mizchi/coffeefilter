@@ -16,7 +16,6 @@ else
 	coffeefilter = exports
 	coffee = require 'coffee-script'
 	fs = require 'fs'
-	moment = require 'moment'
 
 coffeefilter.version = '0.3.1edge'
 
@@ -354,8 +353,29 @@ skeleton = (data = {}) ->
 		__cf.write_contents contents
 		__cf.current_node = node.parent
 
-	date = (d, format = "YYYY-MM-DD") ->
-		data.__cf.moment(d).format(format)
+	_date_function_helper = (d, format, type) ->
+		if not format?
+			format = data.__cf.settings["#{type}_format"]
+		data.__cf.settings.datetime_function(d, format, type)
+
+
+	parse_date = (d, format = null) ->
+		_date_function_helper d, format, 'date'
+
+	parse_datetime = (d, format = null) ->
+		_date_function_helper d, format, 'datetime'
+
+	parse_time = (d, format = null) ->
+		_date_function_helper d, format, 'time'
+
+	render_date = (d, format = null) ->
+		text parse_date d, format
+
+	render_datetime = (d, format = null) ->
+		text parse_datetime d, format
+
+	render_time = (d, format = null) ->
+		text parse_time d, format
 
 	null
 
@@ -473,13 +493,36 @@ coffeefilter.render = (filename, data = {}) ->
 	# embed a reference to the compile function
 	data.__cf =
 		compile: coffeefilter.compile
-		moment: moment
+		settings: coffeefilter.settings
 
 	tpl = coffeefilter.compile filename
 
 	try
 		(tpl data).render()
 	catch e then throw new TemplateError "Error rendering #{filename}: #{e.message}"
+
+
+coffeefilter.default_date_function = (date, format, type) ->
+	return date
+
+coffeefilter.settings =
+	cache: false
+
+	# dates and times
+	datetime_function: coffeefilter.default_date_function
+	date_format: "YYYY-MM-DD"
+	datetime_format: "YYYY-MM-DD HH:mm"
+	time_format: "HH:mm"
+
+coffeefilter.configure = (new_settings = {}) ->
+	set = (key) ->
+		coffeefilter.settings[key] = new_settings[key] or coffeefilter.settings[key]
+
+	set "cache"
+	set "datetime_function"
+	set "date_format"
+	set "datetime_format"
+	set "time_format"
 
 
 unless window?
