@@ -1,5 +1,9 @@
 # CoffeeFilter <☕/>
 
+It was fun while it lasted, but this fork has been left for dead...
+[CoffeeCup](https://github.com/gradus/coffeecup) is the way to go if you
+want an up-to-date Coffeekup.
+
 This is my branch of the original
 [Coffeekup](https://github.com/mauricemach/coffeekup). I have great plans for
 it, but they are not all implemented yet.
